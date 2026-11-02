@@ -48,6 +48,12 @@
       </div>
     </div>
 
+    <!-- Timer Box Header Display -->
+    <div id="timer-display-box" class="hidden items-center gap-2 bg-slate-800 border border-slate-700 px-4 py-1.5 rounded-xl text-amber-400 font-bold arcade-font text-lg">
+      <i class="fa-solid fa-stopwatch animate-pulse"></i>
+      <span id="timer-text">0s</span>
+    </div>
+
     <button onclick="showBoard()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl font-bold text-xs transition border border-slate-700">
       <i class="fa-solid fa-grid-2"></i> Board
     </button>
@@ -127,140 +133,73 @@
     let activeTeamIndex = 0;
     let answeredQuestions = new Set();
     let currentQIndex = null;
+    let timerInterval = null;
+    let timeLeft = 0;
 
-    // Full 100 Questions Data
-    const allQuestions = [
-      // ROUND 1: VERY EASY (1-20)
-      { id: 1, round: "Round 1: Very Easy", points: 10, q: "A statement that is either true or false but not both is called a _____.", options: ["Variable", "Proposition", "Equation", "Expression"], correct: 1 },
-      { id: 2, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the statement: 'The sun rises in the east'?", options: ["True", "False", "Both true and false", "Cannot be determined"], correct: 0 },
-      { id: 3, round: "Round 1: Very Easy", points: 10, q: "The symbol ∧ represents _____.", options: ["OR", "NOT", "AND", "IF THEN"], correct: 2 },
-      { id: 4, round: "Round 1: Very Easy", points: 10, q: "The symbol ∨ represents _____.", options: ["AND", "OR", "NOT", "Equivalent"], correct: 1 },
-      { id: 5, round: "Round 1: Very Easy", points: 10, q: "The negation of 'Today is Monday' is:", options: ["Today is Tuesday", "Today is not Monday", "Tomorrow is Monday", "Today is Sunday"], correct: 1 },
-      { id: 6, round: "Round 1: Very Easy", points: 10, q: "If p is true, what is the truth value of ¬p?", options: ["True", "False", "Both", "Unknown"], correct: 1 },
-      { id: 7, round: "Round 1: Very Easy", points: 10, q: "A compound proposition is formed by combining:", options: ["Numbers", "Variables", "Simple propositions", "Sets"], correct: 2 },
-      { id: 8, round: "Round 1: Very Easy", points: 10, q: "A collection of well-defined objects is called a _____.", options: ["Function", "Set", "Relation", "Graph"], correct: 1 },
-      { id: 9, round: "Round 1: Very Easy", points: 10, q: "Which logical operator is represented by the symbol ↔?", options: ["Implication", "Biconditional", "Negation", "Conjunction"], correct: 1 },
-      { id: 10, round: "Round 1: Very Easy", points: 10, q: "What are the two possible values in Boolean Algebra?", options: ["1 and 2", "−1 and 1", "0 and 2", "0 and 1"], correct: 3 },
-      { id: 11, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of 1 AND 1?", options: ["1", "0", "2", "Undefined"], correct: 0 },
-      { id: 12, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of 0 OR 1?", options: ["0", "2", "1", "Undefined"], correct: 2 },
-      { id: 13, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of NOT 0?", options: ["0", "−1", "2", "1"], correct: 3 },
-      { id: 14, round: "Round 1: Very Easy", points: 10, q: "Which of the following is an example of a finite set?", options: ["The set of all natural numbers", "The set of months in a year", "The set of all integers", "The set of all real numbers"], correct: 1 },
-      { id: 15, round: "Round 1: Very Easy", points: 10, q: "If A = {2, 4, 8}, which number is NOT an element of A?", options: ["2", "4", "5", "8"], correct: 2 },
-      { id: 16, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the proposition '10 is an even number'?", options: ["True", "False", "Both", "Undefined"], correct: 0 },
-      { id: 17, round: "Round 1: Very Easy", points: 10, q: "Which logical operator means 'NOT'?", options: ["∧", "∨", "¬", "→"], correct: 2 },
-      { id: 18, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the statement '7 is greater than 10'?", options: ["True", "False", "Both", "None of choices"], correct: 1 },
-      { id: 19, round: "Round 1: Very Easy", points: 10, q: "In a graph, what do we call the objects that connect vertices?", options: ["Nodes", "Edges", "Sets", "Paths"], correct: 1 },
-      { id: 20, round: "Round 1: Very Easy", points: 10, q: "What is the cardinality of the set A = {1, 2, 3, 4, 5}?", options: ["4", "5", "6", "10"], correct: 1 },
+    // Difficulty Timer Rules (in seconds)
+    function getRoundTimeLimit(roundName) {
+      if (roundName.includes("Very Easy")) return 10;
+      if (roundName.includes("Easy")) return 20;
+      if (roundName.includes("Normal")) return 30;
+      if (roundName.includes("Hard") && !roundName.includes("Very Hard")) return 40;
+      if (roundName.includes("Very Hard")) return 60;
+      return 30;
+    }
 
-      // ROUND 2: EASY (21-40)
-      { id: 21, round: "Round 2: Easy", points: 20, q: "Which of the following is a proposition?", options: ["Close the door.", "What time is it?", "5 + 3 = 8", "x + 2 = 5"], correct: 2 },
-      { id: 22, round: "Round 2: Easy", points: 20, q: "If p is true and q is false, what is the truth value of p ∧ q?", options: ["True", "False", "Both", "Undefined"], correct: 1 },
-      { id: 23, round: "Round 2: Easy", points: 20, q: "If p is false and q is true, what is the truth value of p ∨ q?", options: ["True", "False", "Undefined", "Neither"], correct: 0 },
-      { id: 24, round: "Round 2: Easy", points: 20, q: "If p and q are both true, what is the truth value of ¬(p ∧ q)?", options: ["True", "Undefined", "Both", "False"], correct: 3 },
-      { id: 25, round: "Round 2: Easy", points: 20, q: "Given R = {(1,3), (2,4)}, what is the domain of R?", options: ["{3, 4}", "{1, 2}", "{1, 3, 4}", "{2, 4}"], correct: 1 },
-      { id: 26, round: "Round 2: Easy", points: 20, q: "Given R = {(1,3), (2,5)}, what is the range of R?", options: ["{1, 2}", "{3, 5}", "{1, 3, 5}", "{2, 5}"], correct: 1 },
-      { id: 27, round: "Round 2: Easy", points: 20, q: "A fair six-sided die is rolled once. What is the probability of getting an even number?", options: ["1/3", "1/2", "2/3", "1/6"], correct: 1 },
-      { id: 28, round: "Round 2: Easy", points: 20, q: "A bag contains 3 red and 2 blue balls. Probability of drawing a blue ball?", options: ["3/5", "1/5", "2/5", "1/2"], correct: 2 },
-      { id: 29, round: "Round 2: Easy", points: 20, q: "Two fair coins are tossed. How many possible ordered outcomes are there?", options: ["4", "2", "6", "8"], correct: 0 },
-      { id: 30, round: "Round 2: Easy", points: 20, q: "What is the probability of an impossible event?", options: ["1", "1/2", "0", "1/4"], correct: 2 },
-      { id: 31, round: "Round 2: Easy", points: 20, q: "How many possible outcomes when rolling a standard six-sided die?", options: ["6", "4", "8", "12"], correct: 0 },
-      { id: 32, round: "Round 2: Easy", points: 20, q: "Probability of drawing an ace from a standard deck of 52 playing cards?", options: ["1/4", "1/26", "4/13", "1/13"], correct: 3 },
-      { id: 33, round: "Round 2: Easy", points: 20, q: "What is the set of all input values of a relation called?", options: ["Range", "Codomain", "Domain", "Intersection"], correct: 2 },
-      { id: 34, round: "Round 2: Easy", points: 20, q: "What do you call a pair of elements written as (a, b)?", options: ["Set Pair", "Ordered Pair", "Subset", "Relation Table"], correct: 1 },
-      { id: 35, round: "Round 2: Easy", points: 20, q: "Which of the following represents a function?", options: ["One input has two outputs", "Every input has exactly one output", "Every input has multiple outputs", "None of the above"], correct: 1 },
-      { id: 36, round: "Round 2: Easy", points: 20, q: "Which of the following is a subset of {1, 2, 3, 4}?", options: ["{2, 5}", "{6}", "{1, 3}", "{0}"], correct: 2 },
-      { id: 37, round: "Round 2: Easy", points: 20, q: "If p is false and q is false, what is the truth value of p ∨ q?", options: ["True", "False", "Undefined", "Both"], correct: 1 },
-      { id: 38, round: "Round 2: Easy", points: 20, q: "If p is false, what is the truth value of p ∧ p?", options: ["True", "False", "Undefined", "Both"], correct: 1 },
-      { id: 39, round: "Round 2: Easy", points: 20, q: "What is the value of 0 AND 0 in Boolean algebra?", options: ["0", "1", "2", "Undefined"], correct: 0 },
-      { id: 40, round: "Round 2: Easy", points: 20, q: "Which of the following is an example of a universal set for days of the week?", options: ["{Mon, Tue}", "{Sat, Sun}", "{Mon, Tue, Wed, Thu, Fri, Sat, Sun}", "{Jan, Feb}"], correct: 2 },
+    function startTimer(seconds) {
+      clearInterval(timerInterval);
+      timeLeft = seconds;
+      const timerBox = document.getElementById('timer-display-box');
+      const timerText = document.getElementById('timer-text');
+      const timerBar = document.getElementById('timer-bar');
+      
+      timerBox.classList.remove('hidden');
+      timerBox.classList.add('flex');
+      timerText.innerText = `${timeLeft}s`;
 
-      // ROUND 3: NORMAL (41-65)
-      { id: 41, round: "Round 3: Normal", points: 30, q: "If A = {1, 2} and B = {3, 4}, how many ordered pairs are in A × B?", options: ["2", "3", "4", "8"], correct: 2 },
-      { id: 42, round: "Round 3: Normal", points: 30, q: "Find the next term in the sequence 3, 6, 12, 24, ?", options: ["30", "44", "48", "50"], correct: 2 },
-      { id: 43, round: "Round 3: Normal", points: 30, q: "What is the degree of a vertex in a graph?", options: ["Number of edges connected to vertex", "Number of vertices", "Total graphs", "Length of graph"], correct: 0 },
-      { id: 44, round: "Round 3: Normal", points: 30, q: "How many possible outcomes when rolling two standard dice?", options: ["6", "12", "24", "36"], correct: 3 },
-      { id: 45, round: "Round 3: Normal", points: 30, q: "Find the next term in the recurrence sequence 2, 6, 18, 54, ?", options: ["108", "162", "216", "324"], correct: 1 },
-      { id: 46, round: "Round 3: Normal", points: 30, q: "Which symbol represents the intersection of two sets?", options: ["∪", "∩", "⊆", "∅"], correct: 1 },
-      { id: 47, round: "Round 3: Normal", points: 30, q: "Next term in the sequence 10, 20, 30, 40, _____?", options: ["45", "50", "55", "60"], correct: 1 },
-      { id: 48, round: "Round 3: Normal", points: 30, q: "In a graph, what is a vertex commonly called?", options: ["Node", "Matrix", "Function", "Sequence"], correct: 0 },
-      { id: 49, round: "Round 3: Normal", points: 30, q: "Which of the following is a proper subset of {1, 2, 3}?", options: ["{1, 2}", "{1, 2, 3}", "{1, 2, 3, 4}", "{4}"], correct: 0 },
-      { id: 50, round: "Round 3: Normal", points: 30, q: "What is the value of 2⁴?", options: ["6", "8", "12", "16"], correct: 3 },
-      { id: 51, round: "Round 3: Normal", points: 30, q: "Which type of graph has no cycles and is connected?", options: ["Complete graph", "Tree", "Cyclic graph", "Directed graph"], correct: 1 },
-      { id: 52, round: "Round 3: Normal", points: 30, q: "Which symbol represents the subset relationship?", options: ["⊆", "∈", "∪", "×"], correct: 0 },
-      { id: 53, round: "Round 3: Normal", points: 30, q: "How many rows in a truth table containing three distinct propositions?", options: ["3", "6", "8", "9"], correct: 2 },
-      { id: 54, round: "Round 3: Normal", points: 30, q: "If f(x) = x² − 1, what is f(5)?", options: ["20", "24", "25", "26"], correct: 1 },
-      { id: 55, round: "Round 3: Normal", points: 30, q: "Box contains 4 yellow & 6 purple balls. Probability of selecting yellow?", options: ["2/5", "3/5", "1/2", "4/6"], correct: 0 },
-      { id: 56, round: "Round 3: Normal", points: 30, q: "What is the result of 1 OR 1 in Boolean algebra?", options: ["0", "1", "2", "Undefined"], correct: 1 },
-      { id: 57, round: "Round 3: Normal", points: 30, q: "A tree has 15 vertices. How many edges does it have?", options: ["13", "14", "15", "16"], correct: 1 },
-      { id: 58, round: "Round 3: Normal", points: 30, q: "Next term in the sequence 4, 9, 14, 19, _____?", options: ["22", "23", "24", "25"], correct: 2 },
-      { id: 59, round: "Round 3: Normal", points: 30, q: "What is a permutation?", options: ["Selection where order matters", "Order never matters", "Set with no elements", "Logical statement"], correct: 0 },
-      { id: 60, round: "Round 3: Normal", points: 30, q: "Converse of 'If it rains, then the ground is wet'?", options: ["If ground is wet, then it rains.", "If no rain, ground not wet.", "If ground not wet, no rain.", "It rains & ground wet."], correct: 0 },
-      { id: 61, round: "Round 3: Normal", points: 30, q: "What is the decimal value of binary 1011?", options: ["9", "10", "11", "12"], correct: 2 },
-      { id: 62, round: "Round 3: Normal", points: 30, q: "What is the negation of 'It is raining'?", options: ["It is cloudy.", "It is not raining.", "It is sunny.", "It may rain."], correct: 1 },
-      { id: 63, round: "Round 3: Normal", points: 30, q: "Which logical operator means OR?", options: ["∨", "∧", "¬", "→"], correct: 0 },
-      { id: 64, round: "Round 3: Normal", points: 30, q: "If a matrix is 2 × 3, how many entries does it contain?", options: ["5", "6", "8", "9"], correct: 1 },
-      { id: 65, round: "Round 3: Normal", points: 30, q: "Which set is an empty set?", options: ["0", "1", "∅", "2"], correct: 2 },
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        if (timerText) timerText.innerText = `${timeLeft}s`;
+        if (timerBar) timerBar.style.width = `${(timeLeft / seconds) * 100}%`;
 
-      // ROUND 4: HARD (66-85)
-      { id: 66, round: "Round 4: Hard", points: 40, q: "If p is true and q is false, what is the truth value of p → q?", options: ["True", "Undefined", "False", "Both"], correct: 2 },
-      { id: 67, round: "Round 4: Hard", points: 40, q: "Committee of 5 selected from 12 students. How many committees possible?", options: ["462", "792", "950", "1,200"], correct: 0 },
-      { id: 68, round: "Round 4: Hard", points: 40, q: "If A = {5, 7} and B = {6, 7}, what is A ∪ B?", options: ["{5, 6, 7}", "{7}", "{5, 6}", "{6, 7}"], correct: 0 },
-      { id: 69, round: "Round 4: Hard", points: 40, q: "How many different ways can 5 distinct students line up?", options: ["25", "60", "100", "120"], correct: 3 },
-      { id: 70, round: "Round 4: Hard", points: 40, q: "Property relation R = {(1,1),(2,2),(3,3)} demonstrates on {1,2,3}?", options: ["Reflexivity", "Symmetry", "Transitivity", "All of the above"], correct: 3 },
-      { id: 71, round: "Round 4: Hard", points: 40, q: "Determinant of 2x2 Identity Matrix?", options: ["0", "1", "2", "-1"], correct: 1 },
-      { id: 72, round: "Round 4: Hard", points: 40, q: "From 10 students, how many ways can a committee of 4 be selected?", options: ["120", "180", "210", "5,040"], correct: 2 },
-      { id: 73, round: "Round 4: Hard", points: 40, q: "If p is true and q is false, truth value of p ∧ q?", options: ["True", "False", "Both", "Cannot be determined"], correct: 1 },
-      { id: 74, round: "Round 4: Hard", points: 40, q: "Two fair dice rolled. Probability sum is 9?", options: ["1/12", "1/9", "1/6", "1/4"], correct: 1 },
-      { id: 75, round: "Round 4: Hard", points: 40, q: "Equivalent to ¬(p ∧ q) according to De Morgan's law?", options: ["¬p ∧ ¬q", "¬p ∨ ¬q", "p ∧ q", "p ∨ q"], correct: 1 },
-      { id: 76, round: "Round 4: Hard", points: 40, q: "If A & B mutually exclusive, P(A)=0.35, P(B)=0.25, what is P(A ∪ B)?", options: ["0.0875", "0.10", "0.60", "0.875"], correct: 2 },
-      { id: 77, round: "Round 4: Hard", points: 40, q: "Let A = {5, 6} & B = {6, 7}. Symmetric difference A △ B?", options: ["{5, 7}", "{6}", "{5, 6, 7}", "{∅}"], correct: 0 },
-      { id: 78, round: "Round 4: Hard", points: 40, q: "How many ways can 2 students be chosen from 5 students?", options: ["5", "10", "15", "20"], correct: 1 },
-      { id: 79, round: "Round 4: Hard", points: 40, q: "How many subsets does a 5-element set have?", options: ["10", "16", "25", "32"], correct: 3 },
-      { id: 80, round: "Round 4: Hard", points: 40, q: "4-digit numbers formed using 1,2,3,4,5 without repetition?", options: ["20", "60", "120", "625"], correct: 2 },
-      { id: 81, round: "Round 4: Hard", points: 40, q: "What does transitive mean?", options: ["If a->b & b->c, then a->c", "Every element relates to itself", "All unrelated", "No pairs"], correct: 0 },
-      { id: 82, round: "Round 4: Hard", points: 40, q: "What is a bijective function?", options: ["Only one-to-one", "Only onto", "Both one-to-one and onto", "Neither"], correct: 2 },
-      { id: 83, round: "Round 4: Hard", points: 40, q: "Ways to assign Pres & VP from 4 students without double role?", options: ["4", "6", "8", "12"], correct: 3 },
-      { id: 84, round: "Round 4: Hard", points: 40, q: "Which situation uses combinations?", options: ["Arranging 4 books", "Ranking top 3", "Selecting 3 for team", "Assigning 1st and 2nd"], correct: 2 },
-      { id: 85, round: "Round 4: Hard", points: 40, q: "What is a bijective function?", options: ["Only one-to-one", "Only onto", "Both one-to-one and onto", "Neither"], correct: 2 },
+        if (timeLeft <= 3 && timeLeft > 0) {
+          playSound(800, 0.08, 'square');
+        }
 
-      // ROUND 5: VERY HARD (86-100)
-      { id: 86, round: "Round 5: Very Hard", points: 50, q: "Bag has 4 red, 3 blue, 3 green. 2 drawn without replacement. Probability both red?", options: ["4/25", "1/5", "2/15", "1/10"], correct: 2 },
-      { id: 87, round: "Round 5: Very Hard", points: 50, q: "Distinct 4-letter arrangements from 6 distinct letters without repeating?", options: ["120", "240", "360", "720"], correct: 2 },
-      { id: 88, round: "Round 5: Very Hard", points: 50, q: "If a₁ = 3 and aₙ = 2aₙ₋₁ + 1, what is a₄?", options: ["15", "21", "25", "31"], correct: 3 },
-      { id: 89, round: "Round 5: Very Hard", points: 50, q: "Connected graph with 9 vertices and 8 edges. Correct conclusion?", options: ["Must be a tree", "Contains a cycle", "Must have 9 edges", "Complete graph"], correct: 0 },
-      { id: 90, round: "Round 5: Very Hard", points: 50, q: "Password: 2 letters followed by 3 digits. Repetition allowed. Total passwords?", options: ["67,600", "175,760", "676,000", "1,757,600"], correct: 3 },
-      { id: 91, round: "Round 5: Very Hard", points: 50, q: "If |A| = 8, |B| = 6, and |A ∩ B| = 2, what is |A ∪ B|?", options: ["10", "12", "14", "16"], correct: 1 },
-      { id: 92, round: "Round 5: Very Hard", points: 50, q: "Logically equivalent expression to ¬(P ∨ Q)?", options: ["¬P ∨ ¬Q", "P ∧ Q", "¬P ∧ ¬Q", "P ∨ Q"], correct: 2 },
-      { id: 93, round: "Round 5: Very Hard", points: 50, q: "How many onto functions from a 3-element set to a 2-element set?", options: ["2", "4", "6", "8"], correct: 2 },
-      { id: 94, round: "Round 5: Very Hard", points: 50, q: "One-to-one functions from 3-element set to 5-element set?", options: ["10", "20", "60", "125"], correct: 2 },
-      { id: 95, round: "Round 5: Very Hard", points: 50, q: "Distinct arrangements of the letters of MISSISSIPPI?", options: ["34,650", "23,500", "10,000", "45,054"], correct: 0 },
-      { id: 96, round: "Round 5: Very Hard", points: 50, q: "Class of 80: 45 study Math, 38 CS, 20 both. How many study neither?", options: ["13", "17", "23", "27"], correct: 1 },
-      { id: 97, round: "Round 5: Very Hard", points: 50, q: "6 distinct people in line. Arrangements where Alice & Bob stand together?", options: ["120", "240", "360", "720"], correct: 1 },
-      { id: 98, round: "Round 5: Very Hard", points: 50, q: "5 red & 3 blue balls. 2 drawn without replacement. Probability both red?", options: ["5/16", "5/14", "25/64", "1/2"], correct: 1 },
-      { id: 99, round: "Round 5: Very Hard", points: 50, q: "Let f(x) = 2x + 1 and g(x) = x². Find (g ∘ f)(3).", options: ["25", "36", "49", "64"], correct: 2 },
-      { id: 100, round: "Round 5: Very Hard", points: 50, q: "What is an ordered pair?", options: ["Group without order", "Pair where position matters", "Set with no elements", "Factorial"], correct: 1 }
-    ];
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleTimeOut();
+        }
+      }, 1000);
+    }
 
-    // Screen 1: Cover / Start Screen
-    function showCoverScreen() {
-      document.getElementById('main-header').classList.add('hidden');
+    function stopTimer() {
+      clearInterval(timerInterval);
+      const timerBox = document.getElementById('timer-display-box');
+      if (timerBox) {
+        timerBox.classList.remove('flex');
+        timerBox.classList.add('hidden');
+      }
+    }
+
+    function handleTimeOut() {
+      stopTimer();
+      playWrongSound();
+      const q = allQuestions[currentQIndex];
+      answeredQuestions.add(q.id);
+      const activeTeam = teams[activeTeamIndex];
+
       const container = document.getElementById('app-container');
       container.innerHTML = `
-        <div class="text-center bg-slate-900/90 border border-slate-800 p-8 md:p-14 rounded-3xl glow-box max-w-3xl mx-auto">
-          <div class="inline-block bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-4 py-1.5 rounded-full arcade-font text-sm mb-4">
-            LIVE CLASSROOM GAME SHOW
+        <div class="bg-amber-950/90 border-2 border-amber-500 rounded-3xl p-8 md:p-12 text-center glow-wrong max-w-2xl mx-auto">
+          <div class="w-20 h-20 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg animate-bounce">
+            <i class="fa-solid fa-hourglass-end"></i>
           </div>
-          <h1 class="arcade-font text-5xl md:text-6xl text-white mb-4 leading-tight">
-            DISCRETE MATH<br><span class="text-cyan-400">TRIVIA SHOWDOWN</span>
-          </h1>
-          <p class="text-slate-400 text-lg mb-8">
-            100 Questions • 5 Rounds of Difficulty • 3 Teams Battle
-          </p>
-          <div class="flex flex-col sm:flex-row justify-center gap-4">
-            <button onclick="showInstructions()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 arcade-font text-xl px-8 py-4 rounded-2xl font-bold shadow-lg transition transform hover:-translate-y-1">
-              <i class="fa-solid fa-play mr-2"></i> START GAME
-            </button>
-          </div>
+          <h2 class="arcade-font text-4xl text-amber-400 mb-2">TIME'S UP!</h2>
+          <p class="text-amber-200 text-base mb-6">${activeTeam.name} ran out of time. Correct Answer: <strong>${q.options[q.correct]}</strong></p>
+          <button onclick="finishQuestionTurn()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 arcade-font text-xl px-8 py-3.5 rounded-xl font-bold shadow-lg transition">
+            BACK TO GAME BOARD <i class="fa-solid fa-arrow-right ml-2"></i>
+          </button>
         </div>
       `;
     }
@@ -308,6 +247,7 @@
 
     // Screen 3: Jeopardy Board Grid
     function showBoard() {
+      stopTimer();
       const container = document.getElementById('app-container');
       
       const rounds = [
@@ -359,6 +299,7 @@
       currentQIndex = index;
       const q = allQuestions[index];
       const activeTeam = teams[activeTeamIndex];
+      const timeLimit = getRoundTimeLimit(q.round);
       const container = document.getElementById('app-container');
 
       const letters = ['A', 'B', 'C', 'D'];
@@ -374,20 +315,29 @@
 
       container.innerHTML = `
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-10 glow-box">
-          <div class="flex justify-between items-center mb-6">
-            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-800 text-cyan-400 border border-slate-700">${q.round} • ${q.points} pts</span>
+          <div class="flex justify-between items-center mb-4">
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-800 text-cyan-400 border border-slate-700">${q.round} • ${q.points} pts • ${timeLimit}s Timer</span>
             <span class="arcade-font text-${activeTeam.color}-400 text-base font-bold">${activeTeam.name}'s TURN</span>
           </div>
+
+          <!-- Countdown Progress Bar -->
+          <div class="w-full bg-slate-800 h-3 rounded-full mb-6 overflow-hidden border border-slate-700">
+            <div id="timer-bar" class="bg-amber-400 h-full w-full transition-all duration-1000 ease-linear"></div>
+          </div>
+
           <h2 class="arcade-font text-2xl md:text-3xl text-white mb-8 leading-snug">${q.q}</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             ${optionsHtml}
           </div>
         </div>
       `;
+
+      startTimer(timeLimit);
     }
 
     // Screen 5: Feedback & Score Update
     function submitAnswer(selectedIndex) {
+      stopTimer();
       const q = allQuestions[currentQIndex];
       answeredQuestions.add(q.id);
       const isCorrect = (selectedIndex === q.correct);
@@ -452,6 +402,142 @@
       document.getElementById('t2-card').className = `cursor-pointer bg-slate-800 border-2 p-2 px-4 rounded-xl text-center transition hover:scale-105 min-w-[110px] ${activeTeamIndex === 1 ? 'border-cyan-400 bg-cyan-950/40' : 'border-slate-700 opacity-60'}`;
       document.getElementById('t3-card').className = `cursor-pointer bg-slate-800 border-2 p-2 px-4 rounded-xl text-center transition hover:scale-105 min-w-[110px] ${activeTeamIndex === 2 ? 'border-purple-400 bg-purple-950/40' : 'border-slate-700 opacity-60'}`;
     }
+
+    // Cover Screen View
+    function showCoverScreen() {
+      stopTimer();
+      document.getElementById('main-header').classList.add('hidden');
+      const container = document.getElementById('app-container');
+      container.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 p-8 md:p-14 rounded-3xl glow-box text-center max-w-3xl mx-auto my-auto">
+          <div class="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-bold px-4 py-1.5 rounded-full text-xs uppercase tracking-widest mb-6 arcade-font">
+            <i class="fa-solid fa-trophy"></i> Ultimate Classroom Showdown
+          </div>
+          <h1 class="arcade-font text-4xl md:text-6xl text-white mb-4 leading-tight">
+            DISCRETE MATH<br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">GAME SHOW</span>
+          </h1>
+          <p class="text-slate-400 text-base md:text-lg mb-8 max-w-xl mx-auto">
+            100 Questions • 5 Round Difficulties • 3-Team Multiplayer Battle Mode
+          </p>
+          <button onclick="showInstructions()" class="bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 arcade-font text-2xl px-12 py-4 rounded-2xl font-bold shadow-2xl transition transform hover:scale-105">
+            START GAME <i class="fa-solid fa-play ml-2"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    // Complete Questions Dataset (Q1 to Q100)
+    const allQuestions = [
+      // Round 1 - Very Easy (10 pts)
+      { id: 1, round: "Round 1: Very Easy", points: 10, q: "A statement that is either true or false but not both is called a _____.", options: ["Variable", "Proposition", "Equation", "Expression"], correct: 1 },
+      { id: 2, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the statement: 'The sun rises in the east'?", options: ["True", "False", "Both true and false", "Cannot be determined"], correct: 0 },
+      { id: 3, round: "Round 1: Very Easy", points: 10, q: "The symbol ∧ represents _____.", options: ["OR", "NOT", "AND", "IF THEN"], correct: 2 },
+      { id: 4, round: "Round 1: Very Easy", points: 10, q: "The symbol ∨ represents _____.", options: ["AND", "OR", "NOT", "Equivalent"], correct: 1 },
+      { id: 5, round: "Round 1: Very Easy", points: 10, q: "The negation of 'Today is Monday' is:", options: ["Today is Tuesday", "Today is not Monday", "Tomorrow is Monday", "Today is Sunday"], correct: 1 },
+      { id: 6, round: "Round 1: Very Easy", points: 10, q: "If p is true, what is the truth value of ¬p?", options: ["True", "False", "Both", "Unknown"], correct: 1 },
+      { id: 7, round: "Round 1: Very Easy", points: 10, q: "A compound proposition is formed by combining:", options: ["Numbers", "Variables", "Simple propositions", "Sets"], correct: 2 },
+      { id: 8, round: "Round 1: Very Easy", points: 10, q: "A collection of well-defined objects is called a _____.", options: ["Function", "Set", "Relation", "Graph"], correct: 1 },
+      { id: 9, round: "Round 1: Very Easy", points: 10, q: "Which logical operator is represented by the symbol ↔?", options: ["Implication", "Biconditional", "Negation", "Conjunction"], correct: 1 },
+      { id: 10, round: "Round 1: Very Easy", points: 10, q: "What are the two possible values in Boolean Algebra?", options: ["1 and 2", "−1 and 1", "0 and 2", "0 and 1"], correct: 3 },
+      { id: 11, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of 1 AND 1?", options: ["1", "0", "2", "Undefined"], correct: 0 },
+      { id: 12, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of 0 OR 1?", options: ["0", "2", "1", "Undefined"], correct: 2 },
+      { id: 13, round: "Round 1: Very Easy", points: 10, q: "What is the Boolean result of NOT 0?", options: ["0", "−1", "2", "1"], correct: 3 },
+      { id: 14, round: "Round 1: Very Easy", points: 10, q: "Which of the following is an example of a finite set?", options: ["The set of all natural numbers", "The set of months in a year", "The set of all integers", "The set of all real numbers"], correct: 1 },
+      { id: 15, round: "Round 1: Very Easy", points: 10, q: "If A = {2, 4, 8}, which number is NOT an element of A?", options: ["2", "4", "5", "8"], correct: 2 },
+      { id: 16, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the proposition '10 is an even number'?", options: ["True", "False", "Both", "Undefined"], correct: 0 },
+      { id: 17, round: "Round 1: Very Easy", points: 10, q: "Which logical operator means 'NOT'?", options: ["∧", "∨", "¬", "→"], correct: 2 },
+      { id: 18, round: "Round 1: Very Easy", points: 10, q: "What is the truth value of the statement '7 is greater than 10'?", options: ["True", "False", "Both", "None of the choices"], correct: 1 },
+      { id: 19, round: "Round 1: Very Easy", points: 10, q: "In a graph, what do we call the objects that connect vertices?", options: ["Nodes", "Edges", "Sets", "Paths"], correct: 1 },
+      { id: 20, round: "Round 1: Very Easy", points: 10, q: "What is the cardinality of the set A = {10, 20, 30, 40}?", options: ["4", "5", "6", "10"], correct: 0 },
+
+      // Round 2 - Easy (20 pts)
+      { id: 21, round: "Round 2: Easy", points: 20, q: "Which of the following is a proposition?", options: ["Close the door.", "What time is it?", "5 + 3 = 8", "x + 2 = 5"], correct: 2 },
+      { id: 22, round: "Round 2: Easy", points: 20, q: "If p is true and q is false, what is the truth value of p ∧ q?", options: ["True", "False", "Both true and false", "Undefined"], correct: 1 },
+      { id: 23, round: "Round 2: Easy", points: 20, q: "If p is false and q is true, what is the truth value of p ∨ q?", options: ["True", "False", "Undefined", "Neither"], correct: 0 },
+      { id: 24, round: "Round 2: Easy", points: 20, q: "If p and q are both true, what is the truth value of ¬(p ∧ q)?", options: ["True", "Undefined", "Both", "False"], correct: 3 },
+      { id: 25, round: "Round 2: Easy", points: 20, q: "Given R = {(1,2), (3,4)}, what is the domain of R?", options: ["{3}", "{1, 3}", "{2, 4}", "{4}"], correct: 1 },
+      { id: 26, round: "Round 2: Easy", points: 20, q: "Given R = {(1,5), (2,6)}, what is the range of R?", options: ["{3}", "{6}", "{5, 6}", "{1, 2}"], correct: 2 },
+      { id: 27, round: "Round 2: Easy", points: 20, q: "A fair six-sided die is rolled once. What is the probability of getting an even number?", options: ["1/3", "1/2", "2/3", "1/6"], correct: 1 },
+      { id: 28, round: "Round 2: Easy", points: 20, q: "A bag contains 3 red balls and 2 blue balls. What is the probability of drawing a blue ball?", options: ["3/5", "1/5", "2/5", "1/2"], correct: 2 },
+      { id: 29, round: "Round 2: Easy", points: 20, q: "Two fair coins are tossed. How many possible ordered outcomes are there?", options: ["4", "2", "6", "8"], correct: 0 },
+      { id: 30, round: "Round 2: Easy", points: 20, q: "What is the probability of an impossible event?", options: ["1", "1/2", "0", "1/4"], correct: 2 },
+      { id: 31, round: "Round 2: Easy", points: 20, q: "How many possible outcomes are there when rolling a standard six-sided die?", options: ["6", "4", "8", "12"], correct: 0 },
+      { id: 32, round: "Round 2: Easy", points: 20, q: "What is the probability of drawing an ace from a standard deck of 52 playing cards?", options: ["1/4", "1/26", "4/13", "1/13"], correct: 3 },
+      { id: 33, round: "Round 2: Easy", points: 20, q: "What is the set of all input values of a relation called?", options: ["Range", "Codomain", "Domain", "Intersection"], correct: 2 },
+      { id: 34, round: "Round 2: Easy", points: 20, q: "What do you call a pair of elements written as (a, b)?", options: ["Set Pair", "Ordered Pair", "Subset", "Relation Table"], correct: 1 },
+      { id: 35, round: "Round 2: Easy", points: 20, q: "Which of the following represents a function?", options: ["One input has two outputs", "Every input has exactly one output", "Every input has multiple outputs", "None of the above"], correct: 1 },
+      { id: 36, round: "Round 2: Easy", points: 20, q: "Which of the following is a subset of {1, 2, 4}?", options: ["{2}", "{6}", "{1, 5}", "{5}"], correct: 0 },
+      { id: 37, round: "Round 2: Easy", points: 20, q: "If p is false and q is false, what is the truth value of p ∨ q?", options: ["True", "False", "Undefined", "Both"], correct: 1 },
+      { id: 38, round: "Round 2: Easy", points: 20, q: "If p is false, what is the truth value of p ∧ p?", options: ["True", "False", "Undefined", "Both"], correct: 1 },
+      { id: 39, round: "Round 2: Easy", points: 20, q: "What is the value of 0 AND 0 in Boolean algebra?", options: ["0", "1", "2", "Undefined"], correct: 0 },
+      { id: 40, round: "Round 2: Easy", points: 20, q: "Which of the following is an example of a universal set for the days of the week?", options: ["{Monday, Tuesday}", "{Saturday, Sunday}", "{Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday}", "{January, February, March}"], correct: 2 },
+
+      // Round 3 - Normal (30 pts)
+      { id: 41, round: "Round 3: Normal", points: 30, q: "If |A| = 2 and |B| = 2, how many ordered pairs are in A × B?", options: ["2", "3", "4", "8"], correct: 2 },
+      { id: 42, round: "Round 3: Normal", points: 30, q: "Find the next term in the sequence 3, 6, 12, 24, ?", options: ["30", "44", "48", "50"], correct: 2 },
+      { id: 43, round: "Round 3: Normal", points: 30, q: "What is the degree of a vertex in a graph?", options: ["Number of edges connected to the vertex", "Number of vertices in the graph", "Total number of graphs", "Length of the graph"], correct: 0 },
+      { id: 44, round: "Round 3: Normal", points: 30, q: "How many possible outcomes are there when rolling two standard dice?", options: ["6", "12", "24", "36"], correct: 3 },
+      { id: 45, round: "Round 3: Normal", points: 30, q: "Find the next term in the recurrence sequence 2, 6, 18, 54, ?", options: ["108", "162", "216", "324"], correct: 1 },
+      { id: 46, round: "Round 3: Normal", points: 30, q: "Which symbol represents the intersection of two sets?", options: ["∪", "∩", "⊆", "∈"], correct: 1 },
+      { id: 47, round: "Round 3: Normal", points: 30, q: "What is the next term in the sequence 10, 20, 30, 40, _____?", options: ["45", "50", "55", "60"], correct: 1 },
+      { id: 48, round: "Round 3: Normal", points: 30, q: "In a graph, what is a vertex commonly called?", options: ["Node", "Matrix", "Function", "Sequence"], correct: 0 },
+      { id: 49, round: "Round 3: Normal", points: 30, q: "Which of the following is a proper subset of the days of the week?", options: ["{Monday, Tuesday}", "{Saturday, Sunday}", "{Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday}", "{January, February, March}"], correct: 0 },
+      { id: 50, round: "Round 3: Normal", points: 30, q: "What is the value of 2⁴?", options: ["6", "8", "12", "16"], correct: 3 },
+      { id: 51, round: "Round 3: Normal", points: 30, q: "Which type of graph has no cycles and is connected?", options: ["Complete graph", "Tree", "Cyclic graph", "Directed graph"], correct: 1 },
+      { id: 52, round: "Round 3: Normal", points: 30, q: "Which symbol represents the subset relationship?", options: ["∈", "⊆", "∪", "∩"], correct: 1 },
+      { id: 53, round: "Round 3: Normal", points: 30, q: "How many rows are needed in a truth table containing three distinct propositions?", options: ["3", "6", "8", "9"], correct: 2 },
+      { id: 54, round: "Round 3: Normal", points: 30, q: "If f(x) = x² − 1, what is f(5)?", options: ["20", "24", "25", "26"], correct: 1 },
+      { id: 55, round: "Round 3: Normal", points: 30, q: "A box contains 4 yellow and 6 purple balls. What is the probability of randomly selecting a yellow ball?", options: ["2/5", "3/5", "1/2", "4/6"], correct: 0 },
+      { id: 56, round: "Round 3: Normal", points: 30, q: "What is the result of 1 OR 1 in Boolean algebra?", options: ["0", "1", "2", "Undefined"], correct: 1 },
+      { id: 57, round: "Round 3: Normal", points: 30, q: "A tree has 15 vertices. How many edges does it have?", options: ["13", "14", "15", "16"], correct: 1 },
+      { id: 58, round: "Round 3: Normal", points: 30, q: "What is the next term in the sequence 4, 9, 14, 19, _____?", options: ["22", "23", "24", "25"], correct: 2 },
+      { id: 59, round: "Round 3: Normal", points: 30, q: "What is a permutation?", options: ["A selection where order matters", "A selection where order never matters", "A set with no elements", "A logical statement"], correct: 0 },
+      { id: 60, round: "Round 3: Normal", points: 30, q: "What is the converse of 'If it rains, then the ground is wet'?", options: ["If the ground is wet, then it rains.", "If it does not rain, the ground is not wet.", "If the ground is not wet, it does not rain.", "It rains and the ground is wet."], correct: 0 },
+      { id: 61, round: "Round 3: Normal", points: 30, q: "What is the decimal value of binary 1011?", options: ["9", "10", "11", "12"], correct: 2 },
+      { id: 62, round: "Round 3: Normal", points: 30, q: "What is the negation of 'It is raining'?", options: ["It is cloudy.", "It is not raining.", "It is sunny.", "It may rain."], correct: 1 },
+      { id: 63, round: "Round 3: Normal", points: 30, q: "Which logical operator means OR?", options: ["∨", "∧", "¬", "→"], correct: 0 },
+      { id: 64, round: "Round 3: Normal", points: 30, q: "If a matrix is 2 × 3, how many entries does it contain?", options: ["5", "6", "8", "9"], correct: 1 },
+      { id: 65, round: "Round 3: Normal", points: 30, q: "Which set is an empty set?", options: ["{0}", "{1}", "∅", "{2}"], correct: 2 },
+
+      // Round 4 - Hard (40 pts)
+      { id: 66, round: "Round 4: Hard", points: 40, q: "If p is true and q is false, what is the truth value of p → q?", options: ["True", "Undefined", "False", "Both"], correct: 2 },
+      { id: 67, round: "Round 4: Hard", points: 40, q: "A committee of 5 members is selected from 12 students. How many committees are possible?", options: ["462", "792", "950", "1,200"], correct: 1 },
+      { id: 68, round: "Round 4: Hard", points: 40, q: "If |A| = 7 and |B| = 6, what is max |A ∪ B| if A and B are disjoint?", options: ["5", "7", "13", "6"], correct: 2 },
+      { id: 69, round: "Round 4: Hard", points: 40, q: "How many different ways can 5 distinct students line up?", options: ["25", "60", "100", "120"], correct: 3 },
+      { id: 70, round: "Round 4: Hard", points: 40, q: "Which property does a relation R demonstrate if (a,a) ∈ R for all elements a?", options: ["Reflexivity", "Symmetry", "Transitivity", "Irreflexivity"], correct: 0 },
+      { id: 71, round: "Round 4: Hard", points: 40, q: "What is the determinant of matrix [[3, 2], [1, 4]]?", options: ["5", "8", "10", "14"], correct: 2 },
+      { id: 72, round: "Round 4: Hard", points: 40, q: "From 10 students, how many ways can a committee of 4 students be selected?", options: ["120", "180", "210", "5,040"], correct: 2 },
+      { id: 73, round: "Round 4: Hard", points: 40, q: "If p is true and q is false, what is the truth value of p ∧ q?", options: ["True", "False", "Both true and false", "Cannot be determined"], correct: 1 },
+      { id: 74, round: "Round 4: Hard", points: 40, q: "Two fair dice are rolled. What is the probability that the sum is 9?", options: ["1/12", "1/9", "1/6", "1/4"], correct: 1 },
+      { id: 75, round: "Round 4: Hard", points: 40, q: "Which expression is equivalent to ¬(p ∧ q) according to De Morgan's law?", options: ["¬p ∧ ¬q", "¬p ∨ ¬q", "p ∧ q", "p ∨ q"], correct: 1 },
+      { id: 76, round: "Round 4: Hard", points: 40, q: "If events A and B are mutually exclusive, with P(A) = 0.35 and P(B) = 0.25, what is P(A ∪ B)?", options: ["0.0875", "0.10", "0.60", "0.875"], correct: 2 },
+      { id: 77, round: "Round 4: Hard", points: 40, q: "Let A = {1, 2, 3} and B = {3, 4, 5}. What is |A △ B|, the symmetric difference size?", options: ["6", "4", "2", "5"], correct: 1 },
+      { id: 78, round: "Round 4: Hard", points: 40, q: "How many ways can 2 students be chosen from 5 students?", options: ["5", "10", "15", "20"], correct: 1 },
+      { id: 79, round: "Round 4: Hard", points: 40, q: "How many subsets does a 5-element set have?", options: ["10", "16", "25", "32"], correct: 3 },
+      { id: 80, round: "Round 4: Hard", points: 40, q: "How many 4-digit numbers can be formed using 1, 2, 3, 4, 5 without repetition?", options: ["20", "60", "120", "626"], correct: 2 },
+      { id: 81, round: "Round 4: Hard", points: 40, q: "What does transitive mean?", options: ["If a relates to b and b relates to c, then a relates to c.", "Every element relates to itself.", "All elements are unrelated.", "The relation has no pairs."], correct: 0 },
+      { id: 82, round: "Round 4: Hard", points: 40, q: "What is a bijective function?", options: ["Only one-to-one", "Only onto", "Both one-to-one and onto", "Neither one-to-one nor onto"], correct: 2 },
+      { id: 83, round: "Round 4: Hard", points: 40, q: "How many ways can you assign a president and vice president from 4 students?", options: ["4", "6", "8", "12"], correct: 3 },
+      { id: 84, round: "Round 4: Hard", points: 40, q: "Which situation uses combinations?", options: ["Arranging 4 books on a shelf", "Ranking the top 3 runners", "Selecting 3 students for a team", "Assigning first and second place"], correct: 2 },
+      { id: 85, round: "Round 4: Hard", points: 40, q: "What is a bijective function?", options: ["Only one-to-one", "Only onto", "Both one-to-one and onto", "Neither one-to-one nor onto"], correct: 2 },
+
+      // Round 5 - Very Hard (50 pts)
+      { id: 86, round: "Round 5: Very Hard", points: 50, q: "A bag contains 4 red, 3 blue, and 3 green balls. Two balls are drawn without replacement. Probability both are red?", options: ["4/25", "1/5", "1/10", "2/15"], correct: 3 },
+      { id: 87, round: "Round 5: Very Hard", points: 50, q: "How many different 4-letter arrangements can be made from 6 distinct letters without repeating?", options: ["120", "240", "360", "720"], correct: 2 },
+      { id: 88, round: "Round 5: Very Hard", points: 50, q: "If a₁ = 3 and aₙ = 2aₙ₋₁ + 1, what is a₄?", options: ["15", "21", "25", "31"], correct: 3 },
+      { id: 89, round: "Round 5: Very Hard", points: 50, q: "A connected graph has 9 vertices and 8 edges. Which conclusion is correct?", options: ["It must be a tree.", "It must contain a cycle.", "It must have 9 edges.", "It must be a complete graph."], correct: 0 },
+      { id: 90, round: "Round 5: Very Hard", points: 50, q: "A password contains 2 letters followed by 3 digits (with repetition allowed). How many passwords?", options: ["67,600", "175,760", "676,000", "1,757,600"], correct: 2 },
+      { id: 91, round: "Round 5: Very Hard", points: 50, q: "If |A| = 8, |B| = 6, and |A ∩ B| = 2, what is |A ∪ B|?", options: ["10", "12", "14", "16"], correct: 1 },
+      { id: 92, round: "Round 5: Very Hard", points: 50, q: "Which expression is logically equivalent to ¬(P ∨ Q)?", options: ["¬P ∨ ¬Q", "P ∧ Q", "¬P ∧ ¬Q", "P ∨ Q"], correct: 2 },
+      { id: 93, round: "Round 5: Very Hard", points: 50, q: "How many onto functions are there from a 3-element set to a 2-element set?", options: ["2", "4", "6", "8"], correct: 2 },
+      { id: 94, round: "Round 5: Very Hard", points: 50, q: "How many one-to-one functions are there from a 3-element set to a 5-element set?", options: ["10", "20", "60", "125"], correct: 2 },
+      { id: 95, round: "Round 5: Very Hard", points: 50, q: "How many distinct arrangements can be made from the letters of 'Mississippi'?", options: ["34,650", "23,500", "10,000", "45,054"], correct: 0 },
+      { id: 96, round: "Round 5: Very Hard", points: 50, q: "In a class of 80 students, 45 study Math, 38 CS, and 20 both. How many study neither?", options: ["13", "17", "23", "27"], correct: 1 },
+      { id: 97, round: "Round 5: Very Hard", points: 50, q: "Six distinct people line up. In how many arrangements must Alice and Bob stand together?", options: ["120", "240", "360", "720"], correct: 1 },
+      { id: 98, round: "Round 5: Very Hard", points: 50, q: "A bag contains 5 red and 3 blue balls. 2 drawn randomly without replacement. Probability both are red?", options: ["5/16", "5/14", "25/64", "1/2"], correct: 1 },
+      { id: 99, round: "Round 5: Very Hard", points: 50, q: "Let f(x) = 2x + 1 and g(x) = x². Find (g ∘ f)(3).", options: ["25", "36", "49", "64"], correct: 2 },
+      { id: 100, round: "Round 5: Very Hard", points: 50, q: "What is an ordered pair?", options: ["A group without order", "A pair where position matters", "A set with no elements", "A factorial"], correct: 1 }
+    ];
 
     // Initialize Cover Screen on Load
     window.onload = showCoverScreen;
